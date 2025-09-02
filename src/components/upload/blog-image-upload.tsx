@@ -4,7 +4,12 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Upload } from "lucide-react";
 import { useImageKitUpload } from "@/hooks/use-imagekit-upload";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle
+} from "@/components/ui/dialog";
 import { useDropzone } from "react-dropzone";
 import { cn } from "@/lib/util";
 import { Progress } from "@/components/ui/progress";
@@ -18,7 +23,7 @@ interface BlogImageUploadProps {
 
 const BlogImageUpload = ({ onImageUploaded }: BlogImageUploadProps) => {
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
-  
+
   const {
     files,
     addFiles,
@@ -57,10 +62,12 @@ const BlogImageUpload = ({ onImageUploaded }: BlogImageUploadProps) => {
 
   const handleModalClose = (open: boolean) => {
     setUploadModalOpen(open);
-    
+
     // Check for successful uploads and pass URL to parent
     if (!open && successCount > 0) {
-      const successfulFiles = files.filter(file => file.status === "success" && file.url);
+      const successfulFiles = files.filter(
+        (file) => file.status === "success" && file.url
+      );
       if (successfulFiles.length > 0) {
         const latestUpload = successfulFiles[successfulFiles.length - 1];
         if (latestUpload.url) {
@@ -78,12 +85,12 @@ const BlogImageUpload = ({ onImageUploaded }: BlogImageUploadProps) => {
         type="button"
         variant="outline"
         onClick={handleUploadClick}
-        className="w-full"
+        className="bg-gray-100 hover:bg-gray-200 cursor-pointer w-full"
       >
         <Upload className="w-4 h-4 mr-2" />
         Upload Image
       </Button>
-      
+
       <Dialog open={uploadModalOpen} onOpenChange={handleModalClose}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
@@ -135,7 +142,9 @@ const BlogImageUpload = ({ onImageUploaded }: BlogImageUploadProps) => {
                   >
                     <div className="flex items-center gap-x-3">
                       <div className="flex items-center">
-                        <span className="text-lg">{getFileIcon(uploadFile.file)}</span>
+                        <span className="text-lg">
+                          {getFileIcon(uploadFile.file)}
+                        </span>
                       </div>
 
                       <div className="min-w-0 flex-1">
@@ -148,7 +157,9 @@ const BlogImageUpload = ({ onImageUploaded }: BlogImageUploadProps) => {
                       </div>
 
                       <div className="flex items-center space-x-3">
-                        <span className="text-lg">{getStatusIcon(uploadFile.status)}</span>
+                        <span className="text-lg">
+                          {getStatusIcon(uploadFile.status)}
+                        </span>
                         <span className="min-w-16 text-sm font-medium">
                           {uploadFile.status === "success" && "Complete"}
                           {uploadFile.status === "error" && "Failed"}
@@ -181,7 +192,10 @@ const BlogImageUpload = ({ onImageUploaded }: BlogImageUploadProps) => {
                     </div>
 
                     {uploadFile.status === "uploading" && (
-                      <Progress value={uploadFile.progress} className="w-full" />
+                      <Progress
+                        value={uploadFile.progress}
+                        className="w-full"
+                      />
                     )}
 
                     {uploadFile.status === "error" && uploadFile.error && (
@@ -231,9 +245,7 @@ const BlogImageUpload = ({ onImageUploaded }: BlogImageUploadProps) => {
                   disabled={isUploading}
                   className="bg-blue-600 hover:bg-blue-700"
                 >
-                  {isUploading
-                    ? "Uploading..."
-                    : `Upload Image`}
+                  {isUploading ? "Uploading..." : `Upload Image`}
                 </Button>
               )}
             </div>
