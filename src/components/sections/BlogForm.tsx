@@ -1,313 +1,435 @@
 "use client";
-import React, { useState } from "react";
-import { Upload, Image, Type, FileText, Eye, Save } from "lucide-react";
 
-const BlogForm = () => {
-  const [formData, setFormData] = useState({
-    title: "",
-    content: "",
-    imageUrl: "",
-    excerpt: "",
-    tags: "",
-    category: ""
-  });
+import React, { useEffect, useRef, useState } from "react";
+import { useUser } from "@clerk/nextjs";
+import { Button } from "@/components/ui/button";
+import BlogImageUpload from "@/components/upload/blog-image-upload";
+import { X } from "lucide-react";
+import toast from "react-hot-toast";
 
-  const [uploadError, setUploadError] = useState("");
-  const [isPreview, setIsPreview] = useState(false);
+export default function BlogForm() {
+  const { user } = useUser();
+  const editorRef = useRef<any>(null);
+  const holderRef = useRef<HTMLDivElement | null>(null);
+  const [isEditorReady, setIsEditorReady] = useState(false);
+  
+  // Form state
+  const [title, setTitle] = useState("");
+  const [authorName, setAuthorName] = useState("");
+  const [commentsCount, setCommentsCount] = useState(0);
+  const [likesCount, setLikesCount] = useState(0);
+  const [imageUrl, setImageUrl] = useState("");
+  const [status, setStatus] = useState<"Draft" | "Published">("Draft");
+  const [category, setCategory] = useState("");
+  const [tags, setTags] = useState<string[]>([]);
+  const [tagInput, setTagInput] = useState("");
+  const [metaTitle, setMetaTitle] = useState("");
+  const [metaKeyword, setMetaKeyword] = useState("");
+  const [metaDescription, setMetaDescription] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleImageUpload = (e: any) => {
-    const file = e.target.files[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        const result = event.target?.result;
-        if (typeof result === "string") {
-          setFormData((prev) => ({ ...prev, imageUrl: result }));
-          setUploadError("");
-        } else {
-          setUploadError("Failed to load image. Please try again.");
+  useEffect(() => {
+    // Safety guards
+    if (typeof window === "undefined") return; // client-only
+    if (editorRef.current) return; // already initialized
+    if (!holderRef.current) return; // holder must exist
+
+    let isMounted = true;
+
+    // Dynamically import EditorJS and tools to avoid SSR issues
+    const initializeEditor = async () => {
+      try {
+        const EditorJS = (await import("@editorjs/editorjs")).default;
+        const Header = (await import("@editorjs/header")).default;
+        const Paragraph = (await import("@editorjs/paragraph")).default;
+
+        const editor = new EditorJS({
+          holder: holderRef.current!,
+          autofocus: true,
+          placeholder: "Write your blog here...",
+          tools: {
+            header: Header,
+            paragraph: Paragraph,
+          },
+          onReady: () => {
+            setIsEditorReady(true);
+          },
+        });
+
+        // Wait for isReady; only set editorRef if initialization succeeded.
+        await editor.isReady;
+        if (isMounted) {
+          editorRef.current = editor;
         }
-      };
-      reader.readAsDataURL(file);
+      } catch (err: any) {
+        console.error("Editor.js initialization failed:", err);
+      }
+    };
+
+    initializeEditor();
+
+    return () => {
+      isMounted = false;
+      setIsEditorReady(false);
+      if (
+        editorRef.current &&
+        typeof editorRef.current.destroy === "function"
+      ) {
+        try {
+          editorRef.current.destroy();
+        } catch (err: any) {
+          console.warn("Error destroying editor:", err);
+        } finally {
+          editorRef.current = null;
+        }
+      } else {
+        editorRef.current = null;
+      }
+    };
+  }, []);
+
+  // Helper functions
+  const addTag = () => {
+    if (tagInput.trim() && !tags.includes(tagInput.trim())) {
+      setTags([...tags, tagInput.trim()]);
+      setTagInput("");
     }
   };
 
-  const handleSubmit = (e: any) => {
-    e.preventDefault();
-    console.log("Blog post data:", formData);
-    // Handle form submission here
+  const removeTag = (tagToRemove: string) => {
+    setTags(tags.filter(tag => tag !== tagToRemove));
   };
 
-  const categories = [
-    "Technology",
-    "Travel",
-    "Food",
-    "Lifestyle",
-    "Business",
-    "Health",
-    "Education",
-    "Entertainment"
-  ];
+  const handleTagKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      addTag();
+    }
+  };
 
-  if (isPreview) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 py-8">
-        <div className="max-w-4xl mx-auto px-4">
-          <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
-            <div className="p-8 border-b border-gray-100">
-              <div className="flex items-center justify-between">
-                <h1 className="text-3xl font-bold text-gray-900">Preview</h1>
-                <button
-                  onClick={() => setIsPreview(false)}
-                  className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
-                >
-                  <Type className="w-4 h-4" />
-                  Edit
-                </button>
-              </div>
-            </div>
+  const handleSave = async () => {
+    if (!editorRef.current) {
+      toast.error("Editor not ready");
+      return;
+    }
 
-            <article className="p-8">
-              {formData.imageUrl && (
-                <img
-                  src={formData.imageUrl}
-                  alt="Featured"
-                  className="w-full h-64 object-cover rounded-lg mb-6"
-                />
-              )}
-              <h1 className="text-4xl font-bold text-gray-900 mb-4">
-                {formData.title || "Your Blog Title"}
-              </h1>
-              {formData.excerpt && (
-                <p className="text-xl text-gray-600 mb-6 italic">
-                  {formData.excerpt}
-                </p>
-              )}
-              <div className="prose max-w-none">
-                {formData.content.split("\n").map((paragraph, index) => (
-                  <p key={index} className="mb-4 text-gray-700 leading-relaxed">
-                    {paragraph}
-                  </p>
-                ))}
-              </div>
-              {formData.tags && (
-                <div className="mt-8 pt-4 border-t border-gray-200">
-                  <div className="flex flex-wrap gap-2">
-                    {formData.tags.split(",").map((tag, index) => (
-                      <span
-                        key={index}
-                        className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm"
-                      >
-                        {tag.trim()}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </article>
-          </div>
-        </div>
-      </div>
-    );
-  }
+    if (!title.trim()) {
+      toast.error("Title is required");
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      const content = await editorRef.current.save();
+
+      const blogData = {
+        title: title.trim(),
+        authorName: authorName.trim() || user?.fullName || "Anonymous",
+        commentsCount,
+        likesCount,
+        content,
+        imageUrl: imageUrl.trim(),
+        status,
+        category: category.trim(),
+        tags,
+        metaTitle: metaTitle.trim(),
+        metaKeyword: metaKeyword.trim(),
+        metaDescription: metaDescription.trim(),
+        userEmail: user?.primaryEmailAddress?.emailAddress ?? "",
+        createdAt: new Date().toISOString(),
+      };
+
+      // TODO: Replace with actual API call
+      console.log("Blog data to save:", blogData);
+      
+      // Simulate API call
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      toast.success(`Blog ${status.toLowerCase()} successfully!`);
+      
+      // Reset form
+      setTitle("");
+      setAuthorName("");
+      setCommentsCount(0);
+      setLikesCount(0);
+      setImageUrl("");
+      setStatus("Draft");
+      setCategory("");
+      setTags([]);
+      setMetaTitle("");
+      setMetaKeyword("");
+      setMetaDescription("");
+      
+      // Clear editor
+      if (editorRef.current) {
+        editorRef.current.clear();
+      }
+      
+    } catch (err) {
+      console.error("Error saving blog:", err);
+      toast.error("Failed to save blog");
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 py-8">
-      <div className="max-w-4xl mx-auto px-4">
-        <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
-          {/* Header */}
-          <div className="bg-gradient-to-r from-blue-600 to-purple-600 p-8">
-            <div className="flex items-center justify-between">
-              <div>
-                <h1 className="text-3xl font-bold text-white mb-2">
-                  Create New Blog Post
-                </h1>
-                <p className="text-blue-100">
-                  Share your thoughts with the world
-                </p>
-              </div>
-              <div className="flex gap-3">
-                <button
-                  type="button"
-                  onClick={() => setIsPreview(true)}
-                  className="flex items-center gap-2 px-4 py-2 bg-white/20 text-white rounded-lg hover:bg-white/30 transition-colors backdrop-blur-sm"
-                >
-                  <Eye className="w-4 h-4" />
-                  Preview
-                </button>
-              </div>
-            </div>
-          </div>
+    <div className="min-h-screen bg-gray-50 py-8">
+      <div className="max-w-4xl mx-auto p-6 bg-white rounded-lg shadow-lg">
+        <h2 className="text-3xl font-bold text-gray-900 mb-8">Create New Blog Post</h2>
 
-          <div className="p-8 space-y-8">
-            {/* Title and Category Row */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div className="md:col-span-2">
-                <label className="flex items-center gap-2 text-lg font-semibold text-gray-700 mb-3">
-                  <Type className="w-5 h-5 text-blue-600" />
-                  Title
-                </label>
-                <input
-                  type="text"
-                  value={formData.title}
-                  onChange={(e) =>
-                    setFormData((prev) => ({ ...prev, title: e.target.value }))
-                  }
-                  placeholder="Enter your blog title..."
-                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:border-blue-500 transition-colors text-lg"
-                />
-              </div>
-
-              <div>
-                <label className="block text-lg font-semibold text-gray-700 mb-3">
-                  Category
-                </label>
-                <select
-                  value={formData.category}
-                  onChange={(e) =>
-                    setFormData((prev) => ({
-                      ...prev,
-                      category: e.target.value
-                    }))
-                  }
-                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:border-blue-500 transition-colors"
-                >
-                  <option value="">Select Category</option>
-                  {categories.map((cat) => (
-                    <option key={cat} value={cat}>
-                      {cat}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
-            {/* Excerpt */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Main Content */}
+          <div className="lg:col-span-2 space-y-6">
+            {/* Title */}
             <div>
-              <label className="block text-lg font-semibold text-gray-700 mb-3">
-                Excerpt (Optional)
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Title *
               </label>
-              <textarea
-                value={formData.excerpt}
-                onChange={(e) =>
-                  setFormData((prev) => ({ ...prev, excerpt: e.target.value }))
-                }
-                placeholder="Brief description of your post..."
-                rows={2}
-                className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:border-blue-500 transition-colors resize-none"
+              <input
+                type="text"
+                placeholder="Enter blog title"
+                className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
               />
             </div>
 
-            {/* Featured Image */}
+            {/* Author Name */}
             <div>
-              <label className="flex items-center gap-2 text-lg font-semibold text-gray-700 mb-3">
-                <Image className="w-5 h-5 text-blue-600" />
-                Featured Image
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Author Name
               </label>
-
-              <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 hover:border-blue-400 transition-colors">
-                {formData.imageUrl ? (
-                  <div className="space-y-4">
-                    <img
-                      src={formData.imageUrl}
-                      alt="Preview"
-                      className="w-full h-48 object-cover rounded-lg"
-                    />
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setFormData((prev) => ({ ...prev, imageUrl: "" }))
-                      }
-                      className="text-red-600 hover:text-red-700 font-medium"
-                    >
-                      Remove Image
-                    </button>
-                  </div>
-                ) : (
-                  <div className="text-center">
-                    <Upload className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={handleImageUpload}
-                      className="hidden"
-                      id="image-upload"
-                    />
-                    <label
-                      htmlFor="image-upload"
-                      className="cursor-pointer inline-flex items-center gap-2 px-6 py-3 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors font-medium"
-                    >
-                      <Upload className="w-4 h-4" />
-                      Upload Image
-                    </label>
-                    <p className="text-gray-500 text-sm mt-2">
-                      PNG, JPG, GIF up to 10MB
-                    </p>
-                  </div>
-                )}
-              </div>
-
-              {uploadError && (
-                <p className="text-red-600 text-sm mt-2">{uploadError}</p>
-              )}
+              <input
+                type="text"
+                placeholder="Author name"
+                className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                value={authorName}
+                onChange={(e) => setAuthorName(e.target.value)}
+              />
             </div>
 
-            {/* Content */}
+            {/* Content Editor */}
             <div>
-              <label className="flex items-center gap-2 text-lg font-semibold text-gray-700 mb-3">
-                <FileText className="w-5 h-5 text-blue-600" />
-                Content
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Content *
               </label>
-              <textarea
-                value={formData.content}
-                onChange={(e) =>
-                  setFormData((prev) => ({ ...prev, content: e.target.value }))
-                }
-                placeholder="Start writing your blog post..."
-                rows={12}
-                className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:border-blue-500 transition-colors resize-none"
+              {!isEditorReady && (
+                <div className="min-h-[300px] border border-gray-300 rounded-lg p-4 bg-white flex items-center justify-center">
+                  <div className="text-gray-500">Loading editor...</div>
+                </div>
+              )}
+              <div
+                ref={holderRef}
+                className={`min-h-[300px] border border-gray-300 rounded-lg p-4 bg-white ${!isEditorReady ? 'hidden' : ''}`}
+              />
+            </div>
+
+            {/* Category */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Category
+              </label>
+              <input
+                type="text"
+                placeholder="Blog category"
+                className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                value={category}
+                onChange={(e) => setCategory(e.target.value)}
               />
             </div>
 
             {/* Tags */}
             <div>
-              <label className="block text-lg font-semibold text-gray-700 mb-3">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
                 Tags
               </label>
+              <div className="flex flex-wrap gap-2 mb-2">
+                {tags.map((tag, index) => (
+                  <span
+                    key={index}
+                    className="inline-flex items-center px-3 py-1 rounded-full text-sm bg-blue-100 text-blue-800"
+                  >
+                    {tag}
+                    <button
+                      type="button"
+                      onClick={() => removeTag(tag)}
+                      className="ml-2 text-blue-600 hover:text-blue-800"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </span>
+                ))}
+              </div>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  placeholder="Add a tag"
+                  className="flex-1 border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  value={tagInput}
+                  onChange={(e) => setTagInput(e.target.value)}
+                  onKeyPress={handleTagKeyPress}
+                />
+                <Button type="button" onClick={addTag} variant="outline">
+                  Add Tag
+                </Button>
+              </div>
+            </div>
+          </div>
+
+          {/* Sidebar */}
+          <div className="space-y-6">
+            {/* Image Upload */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Featured Image
+              </label>
+              {imageUrl ? (
+                <div className="relative">
+                  <img
+                    src={imageUrl}
+                    alt="Featured"
+                    className="w-full h-48 object-cover rounded-lg border"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setImageUrl("")}
+                    className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              ) : (
+                <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
+                  <BlogImageUpload onImageUploaded={setImageUrl} />
+                  <p className="text-sm text-gray-500 mt-2">
+                    Upload featured image
+                  </p>
+                </div>
+              )}
               <input
-                type="text"
-                value={formData.tags}
-                onChange={(e) =>
-                  setFormData((prev) => ({ ...prev, tags: e.target.value }))
-                }
-                placeholder="Enter tags separated by commas (e.g., react, javascript, web development)"
-                className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:border-blue-500 transition-colors"
+                type="url"
+                placeholder="Or paste image URL"
+                className="w-full mt-2 border border-gray-300 rounded-lg p-2 text-sm"
+                value={imageUrl}
+                onChange={(e) => setImageUrl(e.target.value)}
               />
             </div>
 
-            {/* Submit Buttons */}
-            <div className="flex flex-col sm:flex-row gap-4 pt-6">
-              <button
-                type="button"
-                onClick={handleSubmit}
-                className="flex-1 flex items-center justify-center gap-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white py-4 px-6 rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all transform hover:scale-[1.02] font-semibold text-lg shadow-lg"
+            {/* Status */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Status
+              </label>
+              <select
+                className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                value={status}
+                onChange={(e) => setStatus(e.target.value as "Draft" | "Published")}
               >
-                <Save className="w-5 h-5" />
-                Publish Blog Post
-              </button>
+                <option value="Draft">Draft</option>
+                <option value="Published">Published</option>
+              </select>
+            </div>
 
-              <button
-                type="button"
-                className="flex items-center justify-center gap-2 bg-gray-100 text-gray-700 py-4 px-6 rounded-lg hover:bg-gray-200 transition-colors font-semibold"
-              >
-                Save as Draft
-              </button>
+            {/* Comments Count */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Comments Count
+              </label>
+              <input
+                type="number"
+                min="0"
+                className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                value={commentsCount}
+                onChange={(e) => setCommentsCount(Number(e.target.value))}
+              />
+            </div>
+
+            {/* Likes Count */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Likes Count
+              </label>
+              <input
+                type="number"
+                min="0"
+                className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                value={likesCount}
+                onChange={(e) => setLikesCount(Number(e.target.value))}
+              />
             </div>
           </div>
+        </div>
+
+        {/* SEO Section */}
+        <div className="mt-8 pt-8 border-t border-gray-200">
+          <h3 className="text-xl font-semibold text-gray-900 mb-4">SEO Settings</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Meta Title */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Meta Title
+              </label>
+              <input
+                type="text"
+                placeholder="SEO title"
+                className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                value={metaTitle}
+                onChange={(e) => setMetaTitle(e.target.value)}
+              />
+            </div>
+
+            {/* Meta Keywords */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Meta Keywords
+              </label>
+              <input
+                type="text"
+                placeholder="SEO keywords"
+                className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                value={metaKeyword}
+                onChange={(e) => setMetaKeyword(e.target.value)}
+              />
+            </div>
+
+            {/* Meta Description */}
+            <div className="md:col-span-2">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Meta Description
+              </label>
+              <textarea
+                rows={3}
+                placeholder="SEO description"
+                className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                value={metaDescription}
+                onChange={(e) => setMetaDescription(e.target.value)}
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Action Buttons */}
+        <div className="mt-8 flex justify-end gap-4">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => setStatus("Draft")}
+            disabled={isLoading}
+          >
+            Save as Draft
+          </Button>
+          <Button
+            type="button"
+            onClick={handleSave}
+            disabled={isLoading}
+            className="bg-blue-600 hover:bg-blue-700"
+          >
+            {isLoading ? "Saving..." : status === "Published" ? "Publish" : "Save"}
+          </Button>
         </div>
       </div>
     </div>
   );
-};
-
-export default BlogForm;
+}

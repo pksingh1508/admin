@@ -12,15 +12,14 @@ export async function GET(request: NextRequest) {
 
     const { token, expire, signature } = getUploadAuthParams({
       privateKey: process.env.IMAGEKIT_PRIVATE_KEY as string,
-      publicKey: process.env.IMAGEKIT_PUBLIC_KEY as string,
-      expire: 30 * 60 // 30 minutes
+      publicKey: process.env.NEXT_PUBLIC_IMAGEKIT_PUBLIC_KEY as string
     });
 
     return NextResponse.json({
       token,
       expire,
       signature,
-      publicKey: process.env.IMAGEKIT_PUBLIC_KEY
+      publicKey: process.env.NEXT_PUBLIC_IMAGEKIT_PUBLIC_KEY
     });
   } catch (error) {
     console.error("Upload auth error:", error);

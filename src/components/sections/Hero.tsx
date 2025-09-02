@@ -4,22 +4,10 @@ import { Eye, Plus, Users, BookOpen, Newspaper } from "lucide-react";
 
 const Hero = () => {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 to-gray-800">
       <div className="container mx-auto px-4 py-16">
-        {/* Header */}
-        <div className="text-center mb-16">
-          <h1 className="text-4xl md:text-6xl font-bold text-gray-900 mb-6">
-            Content Management
-            <span className="text-blue-600 block">Dashboard</span>
-          </h1>
-          <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-            Manage your contacts, blogs, and news articles all in one place.
-            Create, view, and organize your content efficiently.
-          </p>
-        </div>
-
         {/* Main Action Buttons */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto pt-6">
           {/* See All Contacts */}
           <Link href="/contacts">
             <div className="bg-white rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 p-8 border border-gray-100 hover:border-blue-200 transform hover:-translate-y-1">
@@ -78,7 +66,7 @@ const Hero = () => {
           </Link>
 
           {/* Add New Blog */}
-          <Link href="/blogs/new" className="group">
+          <Link href="/addBlogs" className="group">
             <div className="bg-white rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 p-8 border border-gray-100 hover:border-orange-200 transform hover:-translate-y-1">
               <div className="flex items-center justify-center w-16 h-16 bg-orange-100 rounded-full mb-6 mx-auto group-hover:bg-orange-200 transition-colors">
                 <Plus className="w-8 h-8 text-orange-600" />
@@ -97,7 +85,7 @@ const Hero = () => {
           </Link>
 
           {/* Add New News */}
-          <Link href="/news/new" className="group">
+          <Link href="/addNews" className="group">
             <div className="bg-white rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 p-8 border border-gray-100 hover:border-red-200 transform hover:-translate-y-1">
               <div className="flex items-center justify-center w-16 h-16 bg-red-100 rounded-full mb-6 mx-auto group-hover:bg-red-200 transition-colors">
                 <Plus className="w-8 h-8 text-red-600" />
