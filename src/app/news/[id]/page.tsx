@@ -3,13 +3,12 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
-import { Calendar, Clock, User, ArrowLeft, Tag } from "lucide-react";
+import { Calendar, Clock, ArrowLeft, Tag } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
-interface Blog {
+interface News {
   id: string;
   title: string;
-  authorname: string;
   imageurl: string;
   postdate: string;
   updatedate: string;
@@ -17,42 +16,37 @@ interface Blog {
   content: string;
   category: string;
   tags: string[];
-  metatitle: string;
-  metadescription: string;
-  metakeyword: string;
-  commentscount: number;
-  likescount: number;
 }
 
-export default function SingleBlogPage() {
+export default function SingleNewsPage() {
   const params = useParams();
   const router = useRouter();
-  const [blog, setBlog] = useState<Blog | null>(null);
+  const [news, setNews] = useState<News | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (params.id) {
-      fetchBlog(params.id as string);
+      fetchNews(params.id as string);
     }
   }, [params.id]);
 
-  const fetchBlog = async (blogId: string) => {
+  const fetchNews = async (newsId: string) => {
     try {
       setLoading(true);
       const { data, error } = await supabase
-        .from("blogs")
+        .from("news")
         .select("*")
-        .eq("id", blogId)
+        .eq("id", newsId)
         .single();
 
       if (error) {
         throw error;
       }
 
-      setBlog(data);
+      setNews(data);
     } catch (err: any) {
-      console.error("Error fetching blog:", err);
+      console.error("Error fetching news:", err);
       setError(err.message);
     } finally {
       setLoading(false);
@@ -209,28 +203,28 @@ export default function SingleBlogPage() {
         <div className="max-w-4xl mx-auto">
           <div className="text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto"></div>
-            <p className="text-gray-400 mt-4">Loading blog...</p>
+            <p className="text-gray-400 mt-4">Loading news...</p>
           </div>
         </div>
       </div>
     );
   }
 
-  if (error || !blog) {
+  if (error || !news) {
     return (
       <div className="min-h-screen bg-gray-800 py-4 sm:py-8 px-4 sm:px-6 lg:pt-28">
         <div className="max-w-4xl mx-auto">
           <div className="text-center">
             <p className="text-red-400 mb-4">
-              {error || "Blog not found"}
+              {error || "News not found"}
             </p>
             <Button
-              onClick={() => router.push("/blogs")}
+              onClick={() => router.push("/news")}
               variant="outline"
               className="bg-gray-700 hover:bg-gray-600 text-white border-gray-600"
             >
               <ArrowLeft className="w-4 h-4 mr-2" />
-              Back to Blogs
+              Back to News
             </Button>
           </div>
         </div>
@@ -243,22 +237,22 @@ export default function SingleBlogPage() {
       <div className="max-w-4xl mx-auto">
         {/* Back Button */}
         <Button
-          onClick={() => router.push("/blogs")}
+          onClick={() => router.push("/news")}
           variant="outline"
           className="mb-6 bg-gray-700 hover:bg-gray-600 text-white border-gray-600"
         >
           <ArrowLeft className="w-4 h-4 mr-2" />
-          Back to Blogs
+          Back to News
         </Button>
 
-        {/* Blog Content */}
+        {/* News Content */}
         <article className="bg-white/10 backdrop-blur-sm rounded-2xl shadow-xl border border-white/20 overflow-hidden">
           {/* Featured Image */}
-          {blog.imageurl && (
+          {news.imageurl && (
             <div className="relative h-64 md:h-80 overflow-hidden">
               <img
-                src={blog.imageurl}
-                alt={blog.title}
+                src={news.imageurl}
+                alt={news.title}
                 className="w-full h-full object-cover"
               />
               <div className="absolute inset-0 bg-black/30"></div>
@@ -269,38 +263,34 @@ export default function SingleBlogPage() {
           <div className="p-6 md:p-8 lg:p-10">
             {/* Title */}
             <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold text-white mb-6">
-              {blog.title}
+              {news.title}
             </h1>
 
             {/* Meta Information */}
             <div className="flex flex-wrap items-center gap-6 mb-8 text-gray-400">
               <div className="flex items-center">
-                <User className="w-5 h-5 mr-2" />
-                <span>{blog.authorname}</span>
-              </div>
-              <div className="flex items-center">
                 <Calendar className="w-5 h-5 mr-2" />
-                <span>Posted: {formatDate(blog.postdate)}</span>
+                <span>Posted: {formatDate(news.postdate)}</span>
               </div>
-              {blog.updatedate !== blog.postdate && (
+              {news.updatedate !== news.postdate && (
                 <div className="flex items-center">
                   <Clock className="w-5 h-5 mr-2" />
-                  <span>Updated: {formatDate(blog.updatedate)}</span>
+                  <span>Updated: {formatDate(news.updatedate)}</span>
                 </div>
               )}
             </div>
 
             {/* Category and Tags */}
             <div className="flex flex-wrap items-center gap-4 mb-8">
-              {blog.category && (
+              {news.category && (
                 <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
                   <Tag className="w-3 h-3 mr-1" />
-                  {blog.category}
+                  {news.category}
                 </span>
               )}
-              {blog.tags && blog.tags.length > 0 && (
+              {news.tags && news.tags.length > 0 && (
                 <div className="flex flex-wrap gap-2">
-                  {blog.tags.map((tag, index) => (
+                  {news.tags.map((tag, index) => (
                     <span
                       key={index}
                       className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800"
@@ -312,32 +302,24 @@ export default function SingleBlogPage() {
               )}
             </div>
 
-            {/* Blog Content */}
+            {/* News Content */}
             <div className="prose prose-lg max-w-none">
-              {blog.content ? renderContent(blog.content) : (
+              {news.content ? renderContent(news.content) : (
                 <p className="text-gray-300">No content available.</p>
               )}
             </div>
 
-            {/* Stats */}
-            <div className="flex items-center gap-6 mt-8 pt-8 border-t border-gray-600">
-              <div className="text-gray-400">
-                <span className="font-medium">{blog.likescount || 0}</span> Likes
-              </div>
-              <div className="text-gray-400">
-                <span className="font-medium">{blog.commentscount || 0}</span> Comments
-              </div>
-              <div className="ml-auto">
-                <span
-                  className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${
-                    blog.status === "Published"
-                      ? "bg-green-100 text-green-800"
-                      : "bg-yellow-100 text-yellow-800"
-                  }`}
-                >
-                  {blog.status}
-                </span>
-              </div>
+            {/* Status */}
+            <div className="flex items-center justify-end mt-8 pt-8 border-t border-gray-600">
+              <span
+                className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${
+                  news.status === "published"
+                    ? "bg-green-100 text-green-800"
+                    : "bg-yellow-100 text-yellow-800"
+                }`}
+              >
+                {news.status}
+              </span>
             </div>
           </div>
         </article>

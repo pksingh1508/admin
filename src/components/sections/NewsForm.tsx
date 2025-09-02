@@ -9,7 +9,7 @@ import toast from "react-hot-toast";
 import { supabase } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
 
-export default function BlogForm() {
+export default function NewsForm() {
   const { user } = useUser();
   const editorRef = useRef<any>(null);
   const holderRef = useRef<HTMLDivElement | null>(null);
@@ -18,17 +18,11 @@ export default function BlogForm() {
 
   // Form state
   const [title, setTitle] = useState("");
-  const [authorName, setAuthorName] = useState("");
-  const [commentsCount, setCommentsCount] = useState(0);
-  const [likesCount, setLikesCount] = useState(0);
   const [imageUrl, setImageUrl] = useState("");
   const [status, setStatus] = useState<"Draft" | "Published">("Draft");
   const [category, setCategory] = useState("");
   const [tags, setTags] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState("");
-  const [metaTitle, setMetaTitle] = useState("");
-  const [metaKeyword, setMetaKeyword] = useState("");
-  const [metaDescription, setMetaDescription] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
@@ -54,7 +48,7 @@ export default function BlogForm() {
         const editor = new EditorJS({
           holder: holderRef.current!,
           autofocus: true,
-          placeholder: "Write your blog content here...",
+          placeholder: "Write your news content here...",
           tools: {
             header: Header,
             paragraph: Paragraph,
@@ -167,62 +161,50 @@ export default function BlogForm() {
         return;
       }
 
-      const blogData = {
+      const newsData = {
         title: title.trim(),
-        authorname: authorName.trim() || user?.fullName || "Anonymous",
-        commentscount: commentsCount,
-        likescount: likesCount,
         content: contentString, // Store EditorJS content as JSON string
         imageurl: imageUrl.trim() || null,
         status: status.toLowerCase(),
         category: category.trim() || null,
         tags: tags.length > 0 ? tags : null,
-        metatitle: metaTitle.trim() || null,
-        metakeyword: metaKeyword.trim() || null,
-        metadescription: metaDescription.trim() || null,
         useremail: user?.primaryEmailAddress?.emailAddress ?? "",
         postdate: new Date().toISOString(),
         updatedate: new Date().toISOString()
       };
 
-      console.log("Final blog data being saved:", blogData); // Debug final data
+      console.log("Final news data being saved:", newsData); // Debug final data
 
       // Save to Supabase
       const { data, error } = await supabase
-        .from("blogs")
-        .insert([blogData])
+        .from("news")
+        .insert([newsData])
         .select();
 
       if (error) {
         console.error("Supabase error:", error);
-        toast.error(`Failed to save blog: ${error.message}`);
+        toast.error(`Failed to save news: ${error.message}`);
         return;
       }
 
-      toast.success(`Blog ${status.toLowerCase()} successfully!`);
+      toast.success(`News ${status.toLowerCase()} successfully!`);
 
       // Reset form
       setTitle("");
-      setAuthorName("");
-      setCommentsCount(0);
-      setLikesCount(0);
       setImageUrl("");
       setStatus("Draft");
       setCategory("");
       setTags([]);
-      setMetaTitle("");
-      setMetaKeyword("");
-      setMetaDescription("");
 
       // Clear editor
       if (editorRef.current) {
         editorRef.current.clear();
       }
-      // navigate to the /blogs page
-      router.push("/blogs");
+      // navigate to the /news page
+      router.push("/news");
     } catch (err: any) {
-      console.error("Error saving blog:", err);
-      toast.error("Failed to save blog");
+      console.error("Error saving news:", err);
+      toast.error("Failed to save news");
     } finally {
       setIsLoading(false);
     }
@@ -234,11 +216,11 @@ export default function BlogForm() {
         {/* Header Section */}
         <div className="text-center mb-8 sm:mb-12">
           <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent mb-4">
-            Create New Blog Post
+            Create a News Post
           </h1>
           <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-            Share your thoughts and ideas with the world. Create engaging
-            content with our powerful editor.
+            Share the latest news and updates with your audience. Create
+            engaging news content with our powerful editor.
           </p>
         </div>
 
@@ -254,25 +236,10 @@ export default function BlogForm() {
                 </label>
                 <input
                   type="text"
-                  placeholder="Enter an engaging blog title..."
+                  placeholder="Enter an engaging news title..."
                   className="w-full border-2 border-gray-200 rounded-xl p-4 text-lg focus:ring-4 focus:ring-blue-100 focus:border-blue-500 transition-all duration-200 hover:border-gray-300 bg-gray-50/50 focus:bg-white"
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
-                />
-              </div>
-
-              {/* Author Name */}
-              <div className="group">
-                <label className="flex items-center text-sm font-semibold text-gray-800 mb-3">
-                  <span className="w-2 h-2 bg-green-500 rounded-full mr-2"></span>
-                  Author Name
-                </label>
-                <input
-                  type="text"
-                  placeholder="Author name"
-                  className="w-full border-2 border-gray-200 rounded-xl p-4 focus:ring-4 focus:ring-blue-100 focus:border-blue-500 transition-all duration-200 hover:border-gray-300 bg-gray-50/50 focus:bg-white"
-                  value={authorName}
-                  onChange={(e) => setAuthorName(e.target.value)}
                 />
               </div>
 
@@ -301,7 +268,7 @@ export default function BlogForm() {
                 </label>
                 <input
                   type="text"
-                  placeholder="Blog category"
+                  placeholder="News category"
                   className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   value={category}
                   onChange={(e) => setCategory(e.target.value)}
@@ -405,84 +372,6 @@ export default function BlogForm() {
                   <option value="Draft">Draft</option>
                   <option value="Published">Published</option>
                 </select>
-              </div>
-
-              {/* Comments Count */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Comments Count
-                </label>
-                <input
-                  type="number"
-                  min="0"
-                  className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  value={commentsCount}
-                  onChange={(e) => setCommentsCount(Number(e.target.value))}
-                />
-              </div>
-
-              {/* Likes Count */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Likes Count
-                </label>
-                <input
-                  type="number"
-                  min="0"
-                  className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  value={likesCount}
-                  onChange={(e) => setLikesCount(Number(e.target.value))}
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* SEO Section */}
-          <div className="mt-8 pt-8 border-t border-gray-200">
-            <h3 className="text-xl font-semibold text-gray-900 mb-4">
-              SEO Settings
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Meta Title */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Meta Title
-                </label>
-                <input
-                  type="text"
-                  placeholder="SEO title"
-                  className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  value={metaTitle}
-                  onChange={(e) => setMetaTitle(e.target.value)}
-                />
-              </div>
-
-              {/* Meta Keywords */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Meta Keywords
-                </label>
-                <input
-                  type="text"
-                  placeholder="SEO keywords"
-                  className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  value={metaKeyword}
-                  onChange={(e) => setMetaKeyword(e.target.value)}
-                />
-              </div>
-
-              {/* Meta Description */}
-              <div className="md:col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Meta Description
-                </label>
-                <textarea
-                  rows={3}
-                  placeholder="SEO description"
-                  className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  value={metaDescription}
-                  onChange={(e) => setMetaDescription(e.target.value)}
-                />
               </div>
             </div>
           </div>
