@@ -15,6 +15,7 @@ export default function BlogForm() {
   const holderRef = useRef<HTMLDivElement | null>(null);
   const [isEditorReady, setIsEditorReady] = useState(false);
   const router = useRouter();
+  const initializingRef = useRef(false);
 
   // Form state
   const [title, setTitle] = useState("");
@@ -36,7 +37,9 @@ export default function BlogForm() {
     if (typeof window === "undefined") return; // client-only
     if (editorRef.current) return; // already initialized
     if (!holderRef.current) return; // holder must exist
+    if (initializingRef.current) return; // prevent double initialization
 
+    initializingRef.current = true;
     let isMounted = true;
 
     // Dynamically import EditorJS and tools to avoid SSR issues
@@ -46,7 +49,6 @@ export default function BlogForm() {
         const Header = (await import("@editorjs/header")).default;
         const Paragraph = (await import("@editorjs/paragraph")).default;
         const List = (await import("@editorjs/list")).default;
-        const Table = (await import("@editorjs/table")).default;
         const Marker = (await import("@editorjs/marker")).default;
         const Underline = (await import("@editorjs/underline")).default;
         const LinkTool = (await import("@editorjs/link")).default;
@@ -56,20 +58,33 @@ export default function BlogForm() {
           autofocus: true,
           placeholder: "Write your blog content here...",
           tools: {
-            header: Header,
-            paragraph: Paragraph,
-            list: List,
-            table: Table,
+            header: {
+              class: Header,
+              inlineToolbar: ["link", "marker", "bold", "italic"]
+            },
+            paragraph: {
+              class: Paragraph,
+              inlineToolbar: true
+            },
+            list: {
+              class: List,
+              inlineToolbar: true
+            },
             marker: Marker,
             underline: Underline,
-            linkTool: LinkTool
+            linkTool: {
+              class: LinkTool,
+              config: {
+                endpoint: "/api/fetchUrl"
+              }
+            }
           },
-          inlineToolbar: ["bold", "italic", "marker", "underline", "linkTool"],
+          inlineToolbar: ["bold", "italic", "marker", "underline", "link"],
           onReady: () => {
             console.log("EditorJS is ready to work!");
             setIsEditorReady(true);
           },
-          onChange: (api, event) => {
+          onChange: () => {
             console.log("EditorJS content changed");
           }
         });
@@ -86,7 +101,18 @@ export default function BlogForm() {
       }
     };
 
-    initializeEditor();
+    initializeEditor().then(() => {
+      // Check if this is the first load (no reload flag in URL)
+      const urlParams = new URLSearchParams(window.location.search);
+      if (!urlParams.has("reloaded")) {
+        // Add reload flag to URL and reload
+        const newUrl = new URL(window.location.href);
+        newUrl.searchParams.set("reloaded", "true");
+        setTimeout(() => {
+          window.location.href = newUrl.toString();
+        }, 1000); // 1 second delay to ensure editor is ready
+      }
+    });
 
     return () => {
       isMounted = false;
@@ -219,7 +245,7 @@ export default function BlogForm() {
         editorRef.current.clear();
       }
       // navigate to the /blogs page
-      router.push("/blogs");
+      router.replace("/blogs");
     } catch (err: any) {
       console.error("Error saving blog:", err);
       toast.error("Failed to save blog");

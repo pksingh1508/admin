@@ -73,13 +73,12 @@ export default function SingleBlogPage() {
       return parsedContent.blocks?.map((block: any, index: number) => {
         switch (block.type) {
           case "paragraph":
-            // Handle inline formatting (bold, italic, marker, underline, links)
-            const renderInlineText = (text: string) => {
-              return <span dangerouslySetInnerHTML={{ __html: text }} />;
-            };
             return (
-              <p key={index} className="mb-4 text-gray-300 leading-relaxed">
-                {renderInlineText(block.data.text)}
+              <p
+                key={index}
+                className="mb-4 text-gray-300 leading-relaxed prose-inline"
+              >
+                <span dangerouslySetInnerHTML={{ __html: block.data.text }} />
               </p>
             );
           case "header":
@@ -111,16 +110,40 @@ export default function SingleBlogPage() {
             }
           case "list":
             return block.data.style === "ordered" ? (
-              <ol key={index} className="list-decimal list-inside mb-4 text-gray-300 space-y-2">
-                {block.data.items.map((item: string, itemIndex: number) => (
-                  <li key={itemIndex} dangerouslySetInnerHTML={{ __html: item }} />
-                ))}
+              <ol
+                key={index}
+                className="list-decimal list-inside mb-4 text-gray-300 space-y-2"
+              >
+                {block.data.items.map((item: any, itemIndex: number) => {
+                  const itemText =
+                    typeof item === "string"
+                      ? item
+                      : item.content || item.text || JSON.stringify(item);
+                  return (
+                    <li
+                      key={itemIndex}
+                      dangerouslySetInnerHTML={{ __html: itemText }}
+                    />
+                  );
+                })}
               </ol>
             ) : (
-              <ul key={index} className="list-disc list-inside mb-4 text-gray-300 space-y-2">
-                {block.data.items.map((item: string, itemIndex: number) => (
-                  <li key={itemIndex} dangerouslySetInnerHTML={{ __html: item }} />
-                ))}
+              <ul
+                key={index}
+                className="list-disc list-inside mb-4 text-gray-300 space-y-2"
+              >
+                {block.data.items.map((item: any, itemIndex: number) => {
+                  const itemText =
+                    typeof item === "string"
+                      ? item
+                      : item.content || item.text || JSON.stringify(item);
+                  return (
+                    <li
+                      key={itemIndex}
+                      dangerouslySetInnerHTML={{ __html: itemText }}
+                    />
+                  );
+                })}
               </ul>
             );
           case "table":
@@ -146,20 +169,30 @@ export default function SingleBlogPage() {
           case "checklist":
             return (
               <div key={index} className="mb-4 space-y-2">
-                {block.data.items.map((item: any, itemIndex: number) => (
-                  <div key={itemIndex} className="flex items-center space-x-2">
-                    <input
-                      type="checkbox"
-                      checked={item.checked}
-                      readOnly
-                      className="w-4 h-4 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500"
-                    />
-                    <span 
-                      className={`text-gray-300 ${item.checked ? 'line-through opacity-75' : ''}`}
-                      dangerouslySetInnerHTML={{ __html: item.text }}
-                    />
-                  </div>
-                ))}
+                {block.data.items.map((item: any, itemIndex: number) => {
+                  // Handle both string and object formats for checklist items
+                  const itemText =
+                    typeof item === "string"
+                      ? item
+                      : item.text || item.content || "";
+                  const isChecked =
+                    typeof item === "object" ? item.checked : false;
+
+                  return (
+                    <div
+                      key={itemIndex}
+                      className="flex items-center space-x-3"
+                    >
+                      <span className="text-lg">{isChecked ? "✅" : "⬜"}</span>
+                      <span
+                        className={`text-gray-300 ${
+                          isChecked ? "line-through opacity-75" : ""
+                        }`}
+                        dangerouslySetInnerHTML={{ __html: itemText }}
+                      />
+                    </div>
+                  );
+                })}
               </div>
             );
           case "linkTool":
@@ -314,7 +347,46 @@ export default function SingleBlogPage() {
 
             {/* Blog Content */}
             <div className="prose prose-lg max-w-none">
-              {blog.content ? renderContent(blog.content) : (
+              <style jsx>{`
+                .prose-inline b,
+                .prose-inline strong {
+                  font-weight: bold;
+                  color: #ffffff;
+                }
+                .prose-inline i,
+                .prose-inline em {
+                  font-style: italic;
+                  color: #e5e7eb;
+                }
+                .prose-inline u {
+                  text-decoration: underline;
+                  text-decoration-color: #9ca3af;
+                }
+                .prose-inline mark {
+                  background-color: #fbbf24;
+                  color: #1f2937;
+                  padding: 0.1em 0.2em;
+                  border-radius: 0.2em;
+                }
+                .prose-inline a {
+                  color: #3b82f6;
+                  text-decoration: underline;
+                  text-decoration-color: #3b82f6;
+                  text-underline-offset: 2px;
+                  text-decoration-thickness: 2px;
+                  font-weight: 500;
+                }
+                .prose-inline a:hover {
+                  color: #1d4ed8;
+                  text-decoration-color: #1d4ed8;
+                  background-color: rgba(59, 130, 246, 0.1);
+                  padding: 1px 2px;
+                  border-radius: 2px;
+                }
+              `}</style>
+              {blog.content ? (
+                renderContent(blog.content)
+              ) : (
                 <p className="text-gray-300">No content available.</p>
               )}
             </div>

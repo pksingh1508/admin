@@ -13,6 +13,7 @@ export default function NewsForm() {
   const { user } = useUser();
   const editorRef = useRef<any>(null);
   const holderRef = useRef<HTMLDivElement | null>(null);
+  const initializingRef = useRef(false);
   const [isEditorReady, setIsEditorReady] = useState(false);
   const router = useRouter();
 
@@ -30,7 +31,9 @@ export default function NewsForm() {
     if (typeof window === "undefined") return; // client-only
     if (editorRef.current) return; // already initialized
     if (!holderRef.current) return; // holder must exist
+    if (initializingRef.current) return; // prevent double initialization
 
+    initializingRef.current = true;
     let isMounted = true;
 
     // Dynamically import EditorJS and tools to avoid SSR issues
@@ -40,7 +43,6 @@ export default function NewsForm() {
         const Header = (await import("@editorjs/header")).default;
         const Paragraph = (await import("@editorjs/paragraph")).default;
         const List = (await import("@editorjs/list")).default;
-        const Table = (await import("@editorjs/table")).default;
         const Marker = (await import("@editorjs/marker")).default;
         const Underline = (await import("@editorjs/underline")).default;
         const LinkTool = (await import("@editorjs/link")).default;
@@ -50,20 +52,34 @@ export default function NewsForm() {
           autofocus: true,
           placeholder: "Write your news content here...",
           tools: {
-            header: Header,
-            paragraph: Paragraph,
-            list: List,
-            table: Table,
+            header: {
+              class: Header,
+              inlineToolbar: ["link", "marker", "bold", "italic"]
+            },
+            paragraph: {
+              class: Paragraph,
+              inlineToolbar: true
+            },
+            list: {
+              class: List,
+              inlineToolbar: true
+            },
             marker: Marker,
             underline: Underline,
-            linkTool: LinkTool
+            linkTool: {
+              class: LinkTool,
+              config: {
+                endpoint: "/api/fetchUrl"
+              }
+            }
           },
-          inlineToolbar: ["bold", "italic", "marker", "underline", "linkTool"],
+          // Global inline toolbar configuration
+          inlineToolbar: ["link", "marker", "bold", "italic", "underline"],
           onReady: () => {
             console.log("EditorJS is ready to work!");
             setIsEditorReady(true);
           },
-          onChange: (api, event) => {
+          onChange: () => {
             console.log("EditorJS content changed");
           }
         });
@@ -80,10 +96,22 @@ export default function NewsForm() {
       }
     };
 
-    initializeEditor();
+    initializeEditor().then(() => {
+      // Check if this is the first load (no reload flag in URL)
+      const urlParams = new URLSearchParams(window.location.search);
+      if (!urlParams.has('reloaded')) {
+        // Add reload flag to URL and reload
+        const newUrl = new URL(window.location.href);
+        newUrl.searchParams.set('reloaded', 'true');
+        setTimeout(() => {
+          window.location.href = newUrl.toString();
+        }, 1000); // 1 second delay to ensure editor is ready
+      }
+    });
 
     return () => {
       isMounted = false;
+      initializingRef.current = false;
       setIsEditorReady(false);
       if (
         editorRef.current &&
@@ -150,14 +178,14 @@ export default function NewsForm() {
 
       // Validate that content exists and has blocks
       if (!content || !content.blocks || content.blocks.length === 0) {
-        toast.error("Please add some content to your blog post");
+        toast.error("Please add some content to your news post");
         return;
       }
 
       // Ensure content is properly structured
       const contentString = JSON.stringify(content);
       if (contentString === "{}" || contentString === '{"blocks":[]}') {
-        toast.error("Blog content cannot be empty");
+        toast.error("News content cannot be empty");
         return;
       }
 
@@ -201,7 +229,7 @@ export default function NewsForm() {
         editorRef.current.clear();
       }
       // navigate to the /news page
-      router.push("/news");
+      router.replace("/news");
     } catch (err: any) {
       console.error("Error saving news:", err);
       toast.error("Failed to save news");
@@ -246,7 +274,7 @@ export default function NewsForm() {
               {/* Content Editor */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Content *
+                  Content * (Select text to see inline formatting options)
                 </label>
                 {!isEditorReady && (
                   <div className="min-h-[300px] border border-gray-300 rounded-lg p-4 bg-white flex items-center justify-center">
@@ -255,9 +283,10 @@ export default function NewsForm() {
                 )}
                 <div
                   ref={holderRef}
-                  className={`min-h-[300px] border border-gray-300 rounded-lg p-4 bg-white ${
+                  className={`min-h-[300px] border border-gray-300 rounded-lg p-4 bg-white relative ${
                     !isEditorReady ? "hidden" : ""
                   }`}
+                  style={{ position: "relative", zIndex: 1 }}
                 />
               </div>
 
